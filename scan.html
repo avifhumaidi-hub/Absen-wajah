@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scan Absensi Wajah - SMP Negeri 1 Kalipare</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --muted: #64748b;
+      --accent: #0f766e;
+      --success: #16a34a;
+      --warn: #d97706;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .brand { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 18px; }
+    .meta { font-size: 13px; color: var(--muted); }
+    .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    button, .btn-label {
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+    }
+    button.primary {
+      background: var(--accent);
+      color: #ffffff;
+      border-color: var(--accent);
+    }
+    main {
+      max-width: 1280px;
+      margin: 24px auto;
+      padding: 0 24px;
+      display: grid;
+      grid-template-columns: 1fr 1.25fr;
+      gap: 20px;
+      align-items: start;
+    }
+    @media (max-width: 960px) {
+      main { grid-template-columns: 1fr; }
+    }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .panel-head {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    .panel-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; font-weight: 700; }
+    .video-stage {
+      background: #020617;
+      display: flex;
+      justify-content: center;
+    }
+    .video-wrap {
+      position: relative;
+      background: #0f172a;
+      aspect-ratio: 3 / 4;
+      width: 100%;
+      max-width: 380px;
+      overflow: hidden;
+    }
+    video, canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    video.mirrored { transform: scaleX(-1); }
+    .panel.fullscreen-panel {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      border-radius: 0;
+      border: none;
+      background: #020617;
+      color: #ffffff;
+      display: flex;
+      flex-direction: column;
+    }
+    .panel.fullscreen-panel .panel-head {
+      background: #0f172a;
+      border-color: #1e293b;
+    }
+    .panel.fullscreen-panel .meta { color: #94a3b8; }
+    .panel.fullscreen-panel button {
+      background: #1e293b;
+      color: #ffffff;
+      border-color: #334155;
+    }
+    .panel.fullscreen-panel .video-stage {
+      flex: 1;
+      min-height: 0;
+      align-items: center;
+      padding: 8px;
+    }
+    .panel.fullscreen-panel .video-wrap {
+      max-width: min(100%, calc((100dvh - 205px) * 0.75));
+    }
+    .panel.fullscreen-panel .banner {
+      background: #0f172a;
+      border-color: #1e293b;
+      color: #ffffff;
+    }
+    .banner {
+      padding: 12px 18px;
+      border-top: 1px solid var(--border);
+      font-size: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .banner-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .detected-card {
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #a7f3d0;
+      background: #f0fdf4;
+      color: #0f172a;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .panel.fullscreen-panel .detected-card {
+      background: #020617;
+      border-color: #059669;
+      color: #ffffff;
+    }
+    .recent-row {
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 14px;
+      align-items: center;
+    }
+    .panel.fullscreen-panel .recent-row { color: #94a3b8; }
+    .recent-name { font-weight: 600; color: var(--text); }
+    .panel.fullscreen-panel .recent-name { color: #6ee7b7; }
+    .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+    .log-list {
+      max-height: 520px;
+      overflow-y: auto;
+    }
+    .log-item {
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    .log-name { font-weight: 600; font-size: 14px; }
+    .log-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .status-text { font-size: 12px; font-weight: 700; }
+    .status-hadir { color: var(--success); }
+    .status-terlambat { color: var(--warn); }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <div class="brand">SMP NEGERI 1 KALIPARE</div>
+      <div class="meta" id="headerMeta">Memuat master_data.json dan model pengenalan wajah...</div>
+    </div>
+    <div class="actions">
+      <select id="sessionModeSelect" aria-label="Mode Sesi Absen" style="font-family:inherit;font-size:13px;font-weight:600;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);">
+        <option value="auto">Mode: Otomatis (11:45 Sholat)</option>
+        <option value="masuk">Mode: Masuk Sekolah</option>
+        <option value="sholat">Mode: Sholat &amp; Keputrian</option>
+      </select>
+      <label class="btn-label">
+        Muat master_data.json
+        <input type="file" id="jsonFileInput" accept=".json" style="display:none" />
+      </label>
+      <button type="button" id="switchCameraBtn">Kamera: Depan</button>
+      <button type="button" id="toggleScanBtn" class="primary">Jeda Scan</button>
+      <button type="button" id="exportCsvBtn">Ekspor CSV</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel" id="cameraPanel">
+      <div class="panel-head">
+        <div class="panel-title">Pemindai Wajah Otomatis</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="meta mono" id="clockDisplay">--:--:--</div>
+          <button type="button" id="fullscreenBtn">Fullscreen</button>
+        </div>
+      </div>
+      <div class="video-stage">
+        <div class="video-wrap">
+          <video id="video" autoplay muted playsinline></video>
+          <canvas id="overlay"></canvas>
+        </div>
+      </div>
+      <div class="banner">
+        <div class="banner-top">
+          <span id="scanStatusText">Menyiapkan kamera & vektor biometrik...</span>
+          <span class="meta mono" id="registeredCountText">0 wajah terdaftar</span>
+        </div>
+        <div id="detectedCard" class="detected-card" style="display:none"></div>
+        <div id="recentRow" class="recent-row" style="display:none"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div class="panel-title">Log Absensi Hari Ini</div>
+        <div class="meta mono" id="todayCountText">0 hadir</div>
+      </div>
+      <div class="log-list" id="logList">
+        <div class="log-item"><span class="meta">Belum ada siswa yang tercatat hari ini.</span></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Konfigurasi default SMP Negeri 1 Kalipare (kompatibel GitHub Pages root flat + master_data.json)
+    const CONFIG = {
+      lateThreshold: '06:45',
+      matchThreshold: 0.48,
+      cooldownMs: 8000,
+      firebaseProjectId: 'gen-lang-client-0437773268',
+      flatModelUrl: '.',
+      localModelUrl: './models',
+      cdnModelUrl: 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model'
+    };
+
+    const video = document.getElementById('video');
+    const overlay = document.getElementById('overlay');
+    const headerMeta = document.getElementById('headerMeta');
+    const scanStatusText = document.getElementById('scanStatusText');
+    const registeredCountText = document.getElementById('registeredCountText');
+    const todayCountText = document.getElementById('todayCountText');
+    const logList = document.getElementById('logList');
+    const clockDisplay = document.getElementById('clockDisplay');
+    const cameraPanel = document.getElementById('cameraPanel');
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const detectedCard = document.getElementById('detectedCard');
+    const recentRow = document.getElementById('recentRow');
+    const toggleScanBtn = document.getElementById('toggleScanBtn');
+    const switchCameraBtn = document.getElementById('switchCameraBtn');
+    const exportCsvBtn = document.getElementById('exportCsvBtn');
+    const jsonFileInput = document.getElementById('jsonFileInput');
+    const sessionModeSelect = document.getElementById('sessionModeSelect');
+
+    let registeredStudents = [];
+    let scanning = true;
+    let isFullscreen = false;
+    let nativeFsActive = false;
+    let facingMode = 'user';
+    let currentStream = null;
+    let isMirrored = true;
+    let lastBeepAt = {};
+
+    function todayDateStr() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return y + '-' + m + '-' + day;
+    }
+
+    function nowTimeStr() {
+      const d = new Date();
+      return d.toTimeString().slice(0, 8);
+    }
+
+    function updateClock() {
+      clockDisplay.textContent = nowTimeStr();
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    function loadAttendanceLocal() {
+      const key = 'smpn1_kalipare_absen_' + todayDateStr();
+      try {
+        return JSON.parse(localStorage.getItem(key) || '[]');
+      } catch {
+        return [];
+      }
+    }
+
+    function saveAttendanceLocal(records) {
+      const key = 'smpn1_kalipare_absen_' + todayDateStr();
+      localStorage.setItem(key, JSON.stringify(records));
+    }
+
+    function isPrayerTimeNow() {
+      const d = new Date();
+      const day = d.getDay();
+      if (day < 1 || day > 5) return false;
+      const mins = d.getHours() * 60 + d.getMinutes();
+      return mins >= 11 * 60 + 45;
+    }
+
+    function getActiveSessionType() {
+      const mode = sessionModeSelect ? sessionModeSelect.value : 'auto';
+      if (mode === 'sholat') return 'sholat';
+      if (mode === 'masuk') return 'masuk';
+      return isPrayerTimeNow() ? 'sholat' : 'masuk';
+    }
+
+    function getPrayerActivity(student) {
+      const day = new Date().getDay();
+      if (day === 5) {
+        return student && student.jenisKelamin === 'P' ? 'Keputrian' : "Sholat Jum'at";
+      }
+      return 'Sholat Dhuhur';
+    }
+
+    function renderLogs() {
+      const records = loadAttendanceLocal();
+      todayCountText.textContent = records.length + ' tercatat';
+      if (records.length === 0) {
+        logList.innerHTML = '<div class="log-item"><span class="meta">Belum ada siswa yang tercatat hari ini.</span></div>';
+        recentRow.style.display = 'none';
+        return;
+      }
+      recentRow.style.display = 'flex';
+      recentRow.innerHTML = '<span>Tercatat terbaru:</span>' + records.slice(0, 4).map(r =>
+        '<span class="recent-name">' + r.nama + ' (' + r.kelas + ' · ' + (r.kegiatan || 'Masuk') + ' · <span class="mono">' + r.time.slice(0, 5) + '</span>)</span>'
+      ).join('');
+      logList.innerHTML = records.map(r => `
+        <div class="log-item">
+          <div>
+            <div class="log-name">${r.nama}</div>
+            <div class="log-sub">${r.nis} · ${r.kelas} · ${r.kegiatan || 'Masuk Sekolah'} · Akurasi ${r.confidence}%</div>
+          </div>
+          <div style="text-align:right">
+            <div class="status-text ${r.status === 'Hadir' ? 'status-hadir' : 'status-terlambat'}">${r.status}</div>
+            <div class="log-sub mono">${r.time}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function showDetectedStudent(name, nis, kelas, statusLabel, timeStr, confidence) {
+      detectedCard.style.display = 'flex';
+      detectedCard.innerHTML =
+        '<div><strong>' + name + '</strong><div class="log-sub">NIS ' + nis + ' · ' + kelas + ' · Akurasi ' + confidence + '%</div></div>' +
+        '<div style="text-align:right"><div class="status-text status-hadir">' + statusLabel + '</div><div class="log-sub mono">' + timeStr + '</div></div>';
+    }
+
+    function applyMasterData(data) {
+      const all = Array.isArray(data.students) ? data.students : [];
+      registeredStudents = all.filter(s => s.faceRegistered && Array.isArray(s.faceDescriptor) && s.faceDescriptor.length === 128);
+      headerMeta.textContent = (data.school || 'SMP NEGERI 1 KALIPARE') + ' · Tahun Pelajaran ' + (data.academicYear || '2026/2027') + ' · ' + all.length + ' siswa';
+      registeredCountText.textContent = registeredStudents.length + ' wajah terdaftar';
+    }
+
+    async function loadMasterData() {
+      try {
+        const res = await fetch('./master_data.json', { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const json = await res.json();
+        applyMasterData(json);
+      } catch (err) {
+        headerMeta.textContent = 'Pilih file master_data.json secara manual jika dibuka lokal (file://)';
+      }
+    }
+
+    async function loadModels() {
+      let modelBase = CONFIG.cdnModelUrl;
+      for (const candidate of [CONFIG.flatModelUrl, CONFIG.localModelUrl]) {
+        try {
+          const probe = await fetch(candidate + '/tiny_face_detector_model-weights_manifest.json');
+          if (probe.ok) {
+            modelBase = candidate;
+            break;
+          }
+        } catch {
+          // try next candidate
+        }
+      }
+      await Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri(modelBase),
+        faceapi.nets.faceLandmark68TinyNet.loadFromUri(modelBase),
+        faceapi.nets.faceRecognitionNet.loadFromUri(modelBase)
+      ]);
+    }
+
+    function euclidean(a, b) {
+      let sum = 0;
+      for (let i = 0; i < a.length; i++) {
+        const d = a[i] - b[i];
+        sum += d * d;
+      }
+      return Math.sqrt(sum);
+    }
+
+    function isSchoolWeekday() {
+      const day = new Date().getDay();
+      return day >= 1 && day <= 5;
+    }
+
+    function recordStudentAttendance(student, confidence) {
+      if (!isSchoolWeekday()) {
+        scanStatusText.textContent = 'Hari Libur (Sabtu/Minggu) · Absensi otomatis hanya aktif Senin–Jumat.';
+        return;
+      }
+
+      const now = Date.now();
+      const sessionType = getActiveSessionType();
+      const cooldownKey = student.id + '_' + sessionType;
+      if (lastBeepAt[cooldownKey] && now - lastBeepAt[cooldownKey] < CONFIG.cooldownMs) {
+        return;
+      }
+      lastBeepAt[cooldownKey] = now;
+
+      const records = loadAttendanceLocal();
+      const kegiatan = sessionType === 'sholat' ? getPrayerActivity(student) : 'Masuk Sekolah';
+      const exists = records.find(r => r.studentId === student.id && (r.sessionType || 'masuk') === sessionType);
+      if (exists) {
+        scanStatusText.textContent = student.nama + ' (' + student.kelas + ') sudah absen ' + kegiatan + ' pukul ' + exists.time;
+        showDetectedStudent(student.nama, student.nis, student.kelas, 'Sudah ' + kegiatan, exists.time, confidence);
+        return;
+      }
+
+      const timeStr = nowTimeStr();
+      const status = sessionType === 'sholat'
+        ? 'Hadir'
+        : (timeStr > (CONFIG.lateThreshold + ':00') ? 'Terlambat' : 'Hadir');
+      records.unshift({
+        studentId: student.id,
+        nis: student.nis,
+        nama: student.nama,
+        kelas: student.kelas,
+        sessionType: sessionType,
+        kegiatan: kegiatan,
+        date: todayDateStr(),
+        time: timeStr,
+        status: status,
+        confidence: confidence
+      });
+      saveAttendanceLocal(records);
+      renderLogs();
+      showDetectedStudent(student.nama, student.nis, student.kelas, kegiatan + ' · ' + status, timeStr, confidence);
+      scanStatusText.textContent = 'Tercatat otomatis (' + kegiatan + '): ' + student.nama + ' (' + student.kelas + ') · ' + status;
+    }
+
+    async function scanLoop() {
+      if (scanning && video.readyState >= 2 && registeredStudents.length > 0) {
+        const displaySize = { width: video.videoWidth, height: video.videoHeight };
+        overlay.width = displaySize.width;
+        overlay.height = displaySize.height;
+        const ctx = overlay.getContext('2d');
+        ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+        const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.48 });
+        const detections = await faceapi.detectAllFaces(video, options).withFaceLandmarks(true).withFaceDescriptors();
+
+        for (const det of detections) {
+          const box = det.detection.box;
+          const vec = Array.from(det.descriptor);
+          let best = null;
+          let bestDist = Infinity;
+
+          for (const st of registeredStudents) {
+            const dist = euclidean(vec, st.faceDescriptor);
+            if (dist < bestDist) {
+              bestDist = dist;
+              best = st;
+            }
+          }
+
+          const matched = best && bestDist <= CONFIG.matchThreshold;
+          const drawX = isMirrored ? (overlay.width - box.x - box.width) : box.x;
+          ctx.strokeStyle = matched ? '#16a34a' : '#f59e0b';
+          ctx.lineWidth = 3;
+          ctx.strokeRect(drawX, box.y, box.width, box.height);
+
+          const label = matched
+            ? best.nama + ' (' + best.kelas + ')'
+            : 'Wajah Belum Terdaftar';
+          ctx.font = '600 13px DM Sans, sans-serif';
+          const boxWidth = Math.min(overlay.width - 8, Math.max(box.width, ctx.measureText(label).width + 18));
+          const labelX = Math.max(4, Math.min(drawX, overlay.width - boxWidth - 4));
+          ctx.fillStyle = matched ? '#16a34a' : '#0f172a';
+          ctx.fillRect(labelX, Math.max(0, box.y - 28), boxWidth, 26);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText(label, labelX + 8, Math.max(17, box.y - 10), boxWidth - 16);
+
+          if (matched) {
+            const conf = Math.round(Math.max(0, Math.min(100, (1 - bestDist / 1.1) * 100)) * 10) / 10;
+            recordStudentAttendance(best, conf);
+          }
+        }
+      }
+      setTimeout(() => requestAnimationFrame(scanLoop), 320);
+    }
+
+    async function startCamera() {
+      if (currentStream) {
+        currentStream.getTracks().forEach(t => t.stop());
+        currentStream = null;
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: facingMode }, width: { ideal: 720 }, height: { ideal: 1280 } },
+        audio: false
+      });
+      currentStream = stream;
+      const track = stream.getVideoTracks()[0];
+      const settings = track && track.getSettings ? track.getSettings() : {};
+      const label = (track && track.label ? track.label : '').toLowerCase();
+      const isBack = settings.facingMode === 'environment' || (!settings.facingMode && (facingMode === 'environment' || /back|rear|environment|belakang/.test(label)));
+      isMirrored = !isBack;
+      video.classList.toggle('mirrored', isMirrored);
+      video.srcObject = stream;
+      switchCameraBtn.textContent = 'Kamera: ' + (facingMode === 'user' ? 'Depan' : 'Belakang');
+    }
+
+    switchCameraBtn.addEventListener('click', async () => {
+      facingMode = facingMode === 'user' ? 'environment' : 'user';
+      try {
+        await startCamera();
+        scanStatusText.textContent = 'Beralih ke kamera ' + (facingMode === 'user' ? 'depan' : 'belakang') + '.';
+      } catch (err) {
+        scanStatusText.textContent = 'Gagal mengganti kamera: ' + err.message;
+      }
+    });
+
+    function setFullscreenState(next) {
+      isFullscreen = next;
+      cameraPanel.classList.toggle('fullscreen-panel', isFullscreen);
+      fullscreenBtn.textContent = isFullscreen ? 'Keluar Fullscreen' : 'Fullscreen';
+    }
+
+    fullscreenBtn.addEventListener('click', async () => {
+      if (!isFullscreen) {
+        setFullscreenState(true);
+        try {
+          if (cameraPanel.requestFullscreen) {
+            await cameraPanel.requestFullscreen();
+            nativeFsActive = true;
+          }
+        } catch {
+          nativeFsActive = false;
+        }
+      } else {
+        setFullscreenState(false);
+        nativeFsActive = false;
+        if (document.fullscreenElement && document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        }
+      }
+    });
+
+    document.addEventListener('fullscreenchange', () => {
+      if (nativeFsActive && !document.fullscreenElement) {
+        nativeFsActive = false;
+        setFullscreenState(false);
+      }
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setFullscreenState(false);
+      }
+    });
+
+    toggleScanBtn.addEventListener('click', () => {
+      scanning = !scanning;
+      toggleScanBtn.textContent = scanning ? 'Jeda Scan' : 'Lanjutkan Scan';
+      scanStatusText.textContent = scanning ? 'Pemindai wajah otomatis aktif.' : 'Pemindai dijeda sementara.';
+    });
+
+    exportCsvBtn.addEventListener('click', () => {
+      const records = loadAttendanceLocal();
+      const header = 'Tanggal,Jam,NIS,Nama,Kelas,Kegiatan,Status,Akurasi\n';
+      const rows = records.map(r => [r.date, r.time, r.nis, '"' + r.nama + '"', r.kelas, '"' + (r.kegiatan || 'Masuk Sekolah') + '"', r.status, r.confidence + '%'].join(',')).join('\n');
+      const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'absensi_smpn1_kalipare_' + todayDateStr() + '.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    jsonFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          applyMasterData(JSON.parse(reader.result));
+          scanStatusText.textContent = 'master_data.json berhasil dimuat.';
+        } catch {
+          scanStatusText.textContent = 'Format master_data.json tidak valid.';
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    (async function init() {
+      renderLogs();
+      await loadMasterData();
+      scanStatusText.textContent = 'Memuat model pengenalan wajah...';
+      await loadModels();
+      await startCamera();
+      scanStatusText.textContent = isSchoolWeekday()
+        ? 'Pemindai wajah otomatis aktif (Senin–Jumat maks. ' + CONFIG.lateThreshold + ') — hadapkan wajah ke kamera.'
+        : 'Hari Libur Siswa (Sabtu/Minggu) — absensi masuk hanya aktif Senin–Jumat maks. ' + CONFIG.lateThreshold + '.';
+      requestAnimationFrame(scanLoop);
+    })();
+  </script>
+</body>
+</html>
